@@ -37,6 +37,7 @@ def run_testssl(ip_list_file):
                 print(f'Invalid IP address or URL: {i}')
                 continue
 
+            print(f'Running testssl.sh for {i}...')
             try:
                 subprocess.run(command, check=True, capture_output=True, text=True, cwd=output_dir)
                 print(f'Successfully ran testssl.sh for {i}')
