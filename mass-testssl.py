@@ -45,12 +45,19 @@ def run_testssl(ip_list_file):
 
             # Run testssl.sh for the current IP address or URL
             print(f"Running testssl.sh for {i}... ({round((index + 1) / total_ips * 100, 2)}%)")
-            with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, cwd=output_dir) as p:
+            with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=output_dir) as p:
+                # Loop through the output from testssl.sh and print it to the console
                 for line in p.stdout:
-                    print(line, end='')
-                p.wait()
+                    # Decode the line using the latin-1 encoding and replace any non-ASCII characters with an empty string
+                    decoded_line = line.decode('latin-1', errors='ignore').strip()
+                    if decoded_line:
+                        print(decoded_line)
 
-            if p.returncode == 0:
+                # Wait for the command to finish and get the return code
+                p.wait()
+                return_code = p.returncode
+
+            if return_code == 0:
                 print(f"Successfully ran testssl.sh for {i}")
             else:
                 print(f"Error running testssl.sh for {i}")
