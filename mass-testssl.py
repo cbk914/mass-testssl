@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # Author: cbk914
 #!/usr/bin/env python3
-
 import subprocess
 import argparse
 import os
@@ -51,19 +50,19 @@ for i, ip in enumerate(ips):
         continue
     testssl_cmd = f"{testssl_path} -9 --html {ip} > {output_file}"
     process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
-    output = ""
     while True:
         line = process.stdout.readline()
         if not line:
             break
-        print(line, end='')
-        output += line
+        print(line)
     process.wait()
     # Check for errors
     if process.returncode != 0:
         print(f"Error: testssl returned non-zero exit code ({process.returncode}) for IP {ip}")
         results[ip] = "Scan failed"
         continue
+    if not output.strip():
+        print(f"Warning: no output from testssl for IP {ip}")
     results[ip] = "Scan successful"
 
 # Print results report
