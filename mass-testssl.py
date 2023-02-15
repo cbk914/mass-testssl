@@ -10,6 +10,7 @@ import validators
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Scan a target list for SSL/TLS security vulnerabilities using testssl.sh')
 parser.add_argument('-f', '--file', required=True, help='input file with IP addresses, URLs, or domain names')
+parser.add_argument('-o', '--output', help='output directory for HTML reports')
 args = parser.parse_args()
 
 # Find testssl.sh on the system
@@ -46,7 +47,11 @@ for i, ip in enumerate(ips):
     except socket.error:
         pass  # Not an IP address
     # Run testssl on IP
+    if args.output:
+    output_file = os.path.join(args.output, f"{ip.replace('.', '_')}.html")
+else:
     output_file = os.path.join(output_dir, f"{ip.replace('.', '_')}.html")
+
     if os.path.isfile(output_file):
         print(f"Skipping {ip}: already scanned")
         results[ip] = "Already scanned"
