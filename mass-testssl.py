@@ -50,7 +50,7 @@ for i, ip in enumerate(ips):
         print(f"Skipping {ip}: already scanned")
         results[ip] = "Already scanned"
         continue
-    testssl_cmd = f"{testssl_path} -9 --html {ip} > {output_file}"
+    testssl_cmd = f"{testssl_path} -9 --html {output_file}{ip}"
     process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
     output = ""
     while True:
