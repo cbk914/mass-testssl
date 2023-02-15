@@ -28,7 +28,7 @@ def scan_ips(ip_list, output_dir):
 
         # execute testssl.sh with the IP address and output directory
         output_file = os.path.join(output_dir, f'{ip}.html')
-        cmd = f'testssl.sh --quiet --html --file {output_file} {ip}'
+        cmd = f'testssl.sh -9 --html --file {output_file} {ip}'
         try:
             subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         except subprocess.CalledProcessError as e:
