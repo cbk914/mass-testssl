@@ -5,82 +5,67 @@ import subprocess
 import argparse
 import os
 import socket
-import sys
+
+
+def run_testssl(ip, testssl_path, output_dir):
+    filename = ip.replace('/', '_').replace(':', '_')
+    output_file = os.path.join(output_dir, filename + ".html")
+    if os.path.isfile(output_file):
+        print("Results for {} already exist".format(ip))
+        return
+    command = [testssl_path, "-9", "--html", ip]
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    while True:
+        output = proc.stdout.readline()
+        if output == b'' and proc.poll() is not None:
+            break
+        if output:
+            try:
+                print(output.decode('utf-8'), end="")
+            except UnicodeDecodeError:
+                print("Error decoding output from testssl.sh")
+    return_code = proc.poll()
+    if return_code == 0:
+        with open(output_file, "w") as f:
+            f.write(proc.stdout.read().decode("utf-8"))
+        print("Results for {} saved to {}".format(ip, output_file))
+    else:
+        print("Error running testssl.sh for {}: {}".format(ip, proc.stderr.read().decode("utf-8")))
+
 
 def main():
-    parser = argparse.ArgumentParser(description='testssl.sh script.')
-    parser.add_argument('-f', '--file', help='File with the list of IP, Ranges or URLs.')
-    parser.add_argument('-o', '--output', default='output', help='Output directory for testssl.sh scan results')
+    parser = argparse.ArgumentParser(description="Script to run testssl.sh on a list of IP addresses and URLs")
+    parser.add_argument("-f", "--file", dest="list_file", help="File containing IP addresses and URLs separated by newlines")
+    parser.add_argument("-o", "--output", dest="output_dir", help="Output directory for testssl results")
     args = parser.parse_args()
 
-    if not args.file:
-        print('Please provide a file with the -f option.')
-        sys.exit(1)
+    if not args.list_file:
+        print("Please provide a list of IP addresses and URLs using the -f/--list option")
+        return
 
-    with open(args.file) as f:
-        content = f.read()
+    if not args.output_dir:
+        args.output_dir = "output"
 
-    # Filter out empty lines and duplicates
-    ips = set(filter(None, (ip.strip() for ip in content.split(','))))
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
-    # Get testssl.sh path
+    with open(args.list_file, "r") as f:
+        ip_list = f.read().splitlines()
+
+    testssl_path = None
     try:
-        testssl_path = subprocess.check_output(['which', 'testssl.sh']).decode().strip()
+        testssl_path = subprocess.check_output(["which", "testssl.sh"]).strip().decode("utf-8")
     except subprocess.CalledProcessError:
-        print('Unable to find testssl.sh on the system.')
-        sys.exit(1)
+        pass
 
-    progress = 0
-    total = len(ips)
-    for ip in ips:
-        try:
-            socket.inet_aton(ip)
-        except socket.error:
-            print(f'Invalid IP address or hostname: {ip}')
-            continue
+    if not testssl_path:
+        print("Could not find testssl.sh on your system. Please install it and make sure it is in your PATH.")
+        return
 
-        # Run testssl.sh on the IP
-        command = f'{testssl_path} -9 --html {ip}'
-        try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-        except OSError:
-            print(f'Unable to execute command: {command}')
-            continue
+    for i, ip in enumerate(ip_list):
+        print("[{}/{}] Running testssl on {}".format(i+1, len(ip_list), ip))
+        run_testssl(ip, testssl_path, args.output_dir)
 
-        # Print output while the process is running
-        while proc.poll() is None:
-            output = proc.stdout.readline().decode('utf-8', errors='replace')
-            if output:
-                if 'testssl.sh' in output:
-                    # Ignore testssl.sh version output
-                    continue
-                elif ' 100.00%' in output:
-                    # Ignore final output lines
-                    continue
-                else:
-                    print(output.strip())
 
-                    # Update progress
-                    progress += 1
-                    percent_complete = round(progress / total * 100, 2)
-                    print(f'Progress: {percent_complete}%')
-
-        # Print any remaining output
-        for output in proc.stdout.readlines():
-            if output:
-                if 'testssl.sh' in output:
-                    # Ignore testssl.sh version output
-                    continue
-                elif ' 100.00%' in output:
-                    # Ignore final output lines
-                    continue
-                else:
-                    print(output.decode('utf-8', errors='replace').strip())
-
-                    # Update progress
-                    progress += 1
-                    percent_complete = round(progress / total * 100, 2)
-                    print(f'Progress: {percent_complete}%')
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
