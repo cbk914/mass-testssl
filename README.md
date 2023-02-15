@@ -20,3 +20,8 @@ This script is a simple wrapper around the "testssl.sh" script, which allows you
 Replace "input_file.txt" with the path to the text file containing the list of IP addresses, ranges, and URLs. 
 
 Additionally it has the -o option to select the output directory for html testssl outputs.
+
+# References
+
+* Testssl.sh official website: https://testssl.sh/
+* fping: https://fping.org/
