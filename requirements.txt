@@ -1,2 +1,2 @@
 argparse==1.4.0
-validators==4.64.1
+validators==0.20.0
