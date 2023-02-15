@@ -20,9 +20,9 @@ testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('
 if args.output:
     output_dir = args.output
 else:
-    output_dir = os.path.join(os.getcwd(), "output_testssl")
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+    output_dir = os.path.join(os.getcwd(), 'output_testssl')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
 # Process input file
 ips = set()
@@ -52,15 +52,21 @@ for i, ip in enumerate(ips):
         print(f"Skipping {ip}: already scanned")
         results[ip] = "Already scanned"
         continue
-    with open(output_file, 'w') as output_handle:
-        testssl_cmd = [testssl_path, "-9", "--html", ip]
-        process = subprocess.Popen(testssl_cmd, stdout=output_handle, stderr=subprocess.PIPE, universal_newlines=True)
-        output, error = process.communicate()
-        if process.returncode != 0:
-            print(f"Error: testssl returned non-zero exit code ({process.returncode}) for {ip}")
-            print(error)
-            results[ip] = "Scan failed"
-            continue
+    testssl_cmd = f"{testssl_path} -9 --html {ip}"
+    process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+    output = ""
+    for line in process.stdout:
+        print(line, end='')
+        output += line
+    process.wait()
+    # Write output to file
+    with open(output_file, 'w') as f:
+        f.write(output)
+    # Check for errors
+    if process.returncode != 0:
+        print(f"Error: testssl returned non-zero exit code ({process.returncode}) for {ip}")
+        results[ip] = "Scan failed"
+        continue
     results[ip] = "Scan successful"
 
 # Print results report
