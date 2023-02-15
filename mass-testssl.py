@@ -45,17 +45,15 @@ def run_testssl(ip_list_file):
 
             # Run testssl.sh for the current IP address or URL
             print(f"Running testssl.sh for {i}... ({round((index + 1) / total_ips * 100, 2)}%)")
-            try:
-                result = subprocess.run(command, check=True, capture_output=True, text=True, cwd=output_dir)
+            with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, cwd=output_dir) as p:
+                for line in p.stdout:
+                    print(line, end='')
+                p.wait()
 
-                if result.returncode == 0:
-                    print(f"Successfully ran testssl.sh for {i}")
-                else:
-                    print(f"Error running testssl.sh for {i}: {result.stderr}")
-            except subprocess.CalledProcessError as e:
-                print(f"Error running testssl.sh for {i}: {e.stderr}")
-            except Exception as e:
-                print(f"Unknown error running testssl.sh for {i}: {e}")
+            if p.returncode == 0:
+                print(f"Successfully ran testssl.sh for {i}")
+            else:
+                print(f"Error running testssl.sh for {i}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run testssl.sh for a list of IP addresses, ranges, and URLs")
