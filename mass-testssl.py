@@ -30,10 +30,30 @@ with open(args.file, 'r') as f:
     for line in f:
         for ip in line.strip().split(','):
             ip = ip.strip()
-            if validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip):
+            if '-' in ip:  # IP range detected
+                start_ip, end_ip = ip.split('-')
+                start_octets = start_ip.split('.')
+                end_octets = end_ip.split('.')
+                if len(start_octets) != 4 or len(end_octets) != 4:
+                    print(f"Error: {ip} is not a valid IP range")
+                    continue
+                for i in range(int(start_octets[0]), int(end_octets[0])+1):
+                    for j in range(int(start_octets[1]), int(end_octets[1])+1):
+                        for k in range(int(start_octets[2]), int(end_octets[2])+1):
+                            for l in range(int(start_octets[3]), int(end_octets[3])+1):
+                                ips.add(f"{i}.{j}.{k}.{l}")
+            elif '/' in ip:  # CIDR range detected
+                try:
+                    network = ipaddress.ip_network(ip, strict=False)
+                    for addr in network.hosts():
+                        ips.add(str(addr))
+                except ValueError:
+                    print(f"Error: {ip} is not a valid CIDR range")
+                    continue
+            elif validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip):
                 ips.add(ip)
             else:
-                print(f"Error: {ip} is not a valid IP address, URL, or domain name")
+                print(f"Error: {ip} is not a valid IP address, URL, domain name, IP range, or CIDR range")
 
 # Initialize results report
 results = {}
