@@ -7,65 +7,51 @@ import os
 import socket
 
 
-def run_testssl(ip, testssl_path, output_dir):
-    filename = ip.replace('/', '_').replace(':', '_')
-    output_file = os.path.join(output_dir, filename + ".html")
-    if os.path.isfile(output_file):
-        print("Results for {} already exist".format(ip))
-        return
-    command = [testssl_path, "-9", "--html", ip]
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while True:
-        output = proc.stdout.readline()
-        if output == b'' and proc.poll() is not None:
-            break
-        if output:
-            try:
-                print(output.decode('utf-8'), end="")
-            except UnicodeDecodeError:
-                print("Error decoding output from testssl.sh")
-    return_code = proc.poll()
-    if return_code == 0:
-        with open(output_file, "w") as f:
-            f.write(proc.stdout.read().decode("utf-8"))
-        print("Results for {} saved to {}".format(ip, output_file))
-    else:
-        print("Error running testssl.sh for {}: {}".format(ip, proc.stderr.read().decode("utf-8")))
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Script to run testssl.sh on a list of IP addresses and URLs")
-    parser.add_argument("-f", "--file", dest="list_file", help="File containing IP addresses and URLs separated by newlines")
-    parser.add_argument("-o", "--output", dest="output_dir", help="Output directory for testssl results")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--file', help='input text file with IPs or URLs')
+    parser.add_argument('-o', '--output', help='output directory for HTML results')
     args = parser.parse_args()
 
-    if not args.list_file:
-        print("Please provide a list of IP addresses and URLs using the -f/--list option")
-        return
+    if args.file:
+        with open(args.file, 'r') as f:
+            ips_urls = f.read().replace('\n', ',').replace(' ', '').split(',')
+    else:
+        parser.error('Please specify an input text file with -f.')
 
-    if not args.output_dir:
-        args.output_dir = "output"
+    if args.output:
+        output_dir = args.output
+    else:
+        output_dir = os.getcwd() + '/output'
 
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    with open(args.list_file, "r") as f:
-        ip_list = f.read().splitlines()
+    processed_ips_urls = set()
 
-    testssl_path = None
-    try:
-        testssl_path = subprocess.check_output(["which", "testssl.sh"]).strip().decode("utf-8")
-    except subprocess.CalledProcessError:
-        pass
+    for ip_url in ips_urls:
+        if ip_url not in processed_ips_urls:
+            processed_ips_urls.add(ip_url)
+            try:
+                ip = socket.gethostbyname(ip_url)
+            except socket.gaierror:
+                print(f'Invalid IP or URL: {ip_url}')
+                continue
 
-    if not testssl_path:
-        print("Could not find testssl.sh on your system. Please install it and make sure it is in your PATH.")
-        return
+            cmd = ['testssl.sh', '-9', '--html', ip]
+            try:
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                output, error = proc.communicate()
+                if error:
+                    print(error.decode('utf-8'))
+                else:
+                    print(output.decode('utf-8'))
 
-    for i, ip in enumerate(ip_list):
-        print("[{}/{}] Running testssl on {}".format(i+1, len(ip_list), ip))
-        run_testssl(ip, testssl_path, args.output_dir)
+                output_path = os.path.join(output_dir, f'{ip}.html')
+                with open(output_path, 'wb') as f:
+                    f.write(output)
+            except subprocess.CalledProcessError:
+                print(f'Error running testssl.sh on {ip_url}')
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
