@@ -16,7 +16,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def scan_ips(ip_list, output_dir):
+def find_testssl_sh():
+    try:
+        path = subprocess.check_output(['which', 'testssl.sh'], universal_newlines=True).strip()
+    except subprocess.CalledProcessError:
+        return None
+    else:
+        return path
+
+
+def scan_ips(ip_list, output_dir, testssl_path):
     unique_ips = set(ip_list)  # create a set of unique IP addresses
     for ip in tqdm(unique_ips, desc='Scanning', unit='IP'):
         # validate the IP address
@@ -28,7 +37,7 @@ def scan_ips(ip_list, output_dir):
 
         # execute testssl.sh with the IP address and output directory
         output_file = os.path.join(output_dir, f'{ip}.html')
-        cmd = f'testssl.sh -9 --html --file {output_file} {ip}'
+        cmd = f'{testssl_path} --quiet --html --file {output_file} {ip}'
         try:
             subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         except subprocess.CalledProcessError as e:
@@ -40,6 +49,12 @@ def main():
 
     # create the output directory if it doesn't exist
     os.makedirs(args.output, exist_ok=True)
+
+    # find the path to the testssl.sh script
+    testssl_path = find_testssl_sh()
+    if not testssl_path:
+        print('testssl.sh not found on the system')
+        return
 
     # read the list of IP addresses and URLs from the input file
     with open(args.file, 'r') as f:
@@ -56,7 +71,7 @@ def main():
                     ip_list.append(line)
 
     # scan the IP addresses using testssl.sh
-    scan_ips(ip_list, args.output)
+    scan_ips(ip_list, args.output, testssl_path)
 
 
 if __name__ == '__main__':
