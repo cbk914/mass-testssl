@@ -9,8 +9,8 @@ The Python script is designed to automate the execution of testssl.sh for a list
 
 * Install testssl.sh by following the instructions on the GitHub repository: https://github.com/drwetter/testssl.sh
 * Save a list of IP addresses, ranges, and URLs to a text file (one per line) in the format "IP_ADDRESS_OR_URL[,IP_ADDRESS_OR_URL...]".
-* Run the Python script using the command 
-* 
+* Run the script using the command: 
+ 
   python mass-testssl.py -f PATH_TO_IP_LIST_FILE 
   
 Replace "PATH_TO_IP_LIST_FILE" with the path to the text file containing the list of IP addresses, ranges, and URLs. 
