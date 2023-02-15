@@ -14,3 +14,4 @@ The Python script is designed to automate the execution of testssl.sh for a list
   python mass-testssl.py -f PATH_TO_IP_LIST_FILE 
   
 Replace "PATH_TO_IP_LIST_FILE" with the path to the text file containing the list of IP addresses, ranges, and URLs. 
+Additionally it has the -o option to select the output directory for html testssl outputs.
