@@ -7,51 +7,49 @@ import os
 import socket
 
 
+def parse_ips(ips_file):
+    with open(ips_file, 'r') as f:
+        ips = f.read()
+    ips = ips.replace('\n', ',')
+    ips = ips.replace(' ', ',')
+    ips = ips.strip(',')
+    ips = ips.split(',')
+    ips = list(set(ips))
+    return ips
+
+
+def run_testssl(ip, testssl_path, output_path):
+    print(f"Scanning {ip}...")
+    cmd = f"{testssl_path} -9 --html {ip} > {output_path}/{ip}.html"
+    subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(f"Finished scanning {ip}.")
+
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--file', help='input text file with IPs or URLs')
-    parser.add_argument('-o', '--output', help='output directory for HTML results')
+    parser = argparse.ArgumentParser(description='Scan IPs with testssl.sh')
+    parser.add_argument('-f', '--file', dest='ips_file', required=True, help='Text file containing list of IPs to scan')
+    parser.add_argument('-t', '--testssl', dest='testssl_path', default='testssl.sh', help='Path to testssl.sh')
+    parser.add_argument('-o', '--output', dest='output_path', default='output', help='Output directory for HTML results')
     args = parser.parse_args()
 
-    if args.file:
-        with open(args.file, 'r') as f:
-            ips_urls = f.read().replace('\n', ',').replace(' ', '').split(',')
-    else:
-        parser.error('Please specify an input text file with -f.')
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
 
-    if args.output:
-        output_dir = args.output
-    else:
-        output_dir = os.getcwd() + '/output'
+    ips = parse_ips(args.ips_file)
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    results = []
+    for ip in ips:
+        try:
+            run_testssl(ip, args.testssl_path, args.output_path)
+            results.append((ip, 'SUCCESS'))
+        except Exception as e:
+            print(f"Failed to scan {ip}. Error message: {str(e)}")
+            results.append((ip, 'FAILED'))
 
-    processed_ips_urls = set()
+    print("\n=== Scan Results ===")
+    for ip, result in results:
+        print(f"{ip}: {result}")
 
-    for ip_url in ips_urls:
-        if ip_url not in processed_ips_urls:
-            processed_ips_urls.add(ip_url)
-            try:
-                ip = socket.gethostbyname(ip_url)
-            except socket.gaierror:
-                print(f'Invalid IP or URL: {ip_url}')
-                continue
-
-            cmd = ['testssl.sh', '-9', '--html', ip]
-            try:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                output, error = proc.communicate()
-                if error:
-                    print(error.decode('utf-8'))
-                else:
-                    print(output.decode('utf-8'))
-
-                output_path = os.path.join(output_dir, f'{ip}.html')
-                with open(output_path, 'wb') as f:
-                    f.write(output)
-            except subprocess.CalledProcessError:
-                print(f'Error running testssl.sh on {ip_url}')
 
 if __name__ == '__main__':
     main()
