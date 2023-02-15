@@ -20,7 +20,9 @@ testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('
 if args.output:
     output_dir = args.output
 else:
-    output_dir = os.getcwd()
+    output_dir = os.path.join(os.getcwd(), "output_testssl")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
 # Process input file
 ips = set()
@@ -50,7 +52,7 @@ for i, ip in enumerate(ips):
         print(f"Skipping {ip}: already scanned")
         results[ip] = "Already scanned"
         continue
-    testssl_cmd = f"{testssl_path} -9 --html {output_file}{ip}"
+    testssl_cmd = f"{testssl_path} -9 --html {ip}"
     process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
     output = ""
     while True:
@@ -59,6 +61,8 @@ for i, ip in enumerate(ips):
             break
         print(line, end='')
         output += line
+    with open(output_file, 'w') as f:
+        f.write(output)
     process.wait()
     # Check for errors
     if process.returncode != 0:
