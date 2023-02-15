@@ -19,8 +19,11 @@ def run_testssl(ip_list_file):
     output_dir = 'testssl_output'
     os.makedirs(output_dir, exist_ok=True)
 
+    # Get the total number of IP addresses, ranges, and URLs in the list
+    total_ips = len(ip_list)
+
     # Run testssl.sh for each IP address, range, and URL in the list
-    for ip in ip_list:
+    for index, ip in enumerate(ip_list):
         # Split the line on commas to handle CSV format
         ips = ip.split(',')
 
@@ -37,12 +40,18 @@ def run_testssl(ip_list_file):
                 print(f'Invalid IP address or URL: {i}')
                 continue
 
-            print(f'Running testssl.sh for {i}...')
+            # Run testssl.sh for the current IP address or URL
+            print(f'Running testssl.sh for {i}... ({round((index + 1) / total_ips * 100, 2)}%)')
             try:
-                subprocess.run(command, check=True, capture_output=True, text=True, cwd=output_dir)
-                print(f'Successfully ran testssl.sh for {i}')
+                result = subprocess.run(command, check=True, capture_output=True, text=True, cwd=output_dir)
+                if result.returncode == 0:
+                    print(f'Successfully ran testssl.sh for {i}')
+                else:
+                    print(f'Error running testssl.sh for {i}: {result.stderr}')
             except subprocess.CalledProcessError as e:
                 print(f'Error running testssl.sh for {i}: {e.stderr}')
+            except Exception as e:
+                print(f'Unknown error running testssl.sh for {i}: {e}')
 
 # Define a function to parse command-line arguments
 def parse_args():
