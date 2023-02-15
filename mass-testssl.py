@@ -43,7 +43,17 @@ def main():
 
     # read the list of IP addresses and URLs from the input file
     with open(args.file, 'r') as f:
-        ip_list = [line.strip() for line in f if line.strip()]
+        ip_list = []
+        for line in f:
+            line = line.strip()
+            if line:
+                for delimiter in [',', ';', ' ']:  # add any other delimiters you want to support
+                    if delimiter in line:
+                        parts = line.split(delimiter)
+                        ip_list.extend(parts)
+                        break
+                else:
+                    ip_list.append(line)
 
     # scan the IP addresses using testssl.sh
     scan_ips(ip_list, args.output)
