@@ -13,7 +13,7 @@ This script is a simple wrapper around the "testssl.sh" script, which allows you
 
 * Create an input file: Create a file with a list of IP addresses, URLs, or domain names that you want to scan, with one address per line, or separated with commas all together. The addresses can be in any of the following formats: IPv4, IPv6, URL, or domain name. If you want to scan a range of IP addresses, you can use CIDR notation, e.g. 192.168.1.0/24. If you want to scan a range of IP addresses using a hyphen, e.g. 192.168.1.1-192.168.1.10, you can use a tool like fping to generate the IP list.
 
-* Run the script: Run the script from the terminal by running python script.py -f input_file.txt. If you want to specify an output directory for the HTML reports, you can use the -o option.
+* Run the script. If you want to specify an output directory for the HTML reports, you can use the -o option.
  
   python mass-testssl.py -f input_file.txt -o output_dir
   
