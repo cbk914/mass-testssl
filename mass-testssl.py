@@ -87,8 +87,8 @@ for i, ip in enumerate(ips):
     results[ip] = "Scan successful"
 
 # Print results report
-print("\n-------------")
-print("\nScan results:")
-print("\n-------------")
+print("\n-----------------")
+print("\n+ Scan results: +")
+print("\n-----------------")
 for ip, result in results.items():
     print(f"{ip}: {result}")
