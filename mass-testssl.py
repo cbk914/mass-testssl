@@ -16,12 +16,12 @@ args = parser.parse_args()
 
 # Find testssl.sh on the system
 testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('utf-8')
+default_dir = 'output_testssl'
 
 # Initialize output directory
-if args.output:
-    output_dir = os.path.join(os.getcwd(), args.output)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+output_dir = os.path.join(os.getcwd(), args.output) if args.output else os.path.join(os.getcwd(), default_dir)
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 # Process input file
 ips = set()
@@ -67,7 +67,7 @@ for i, ip in enumerate(ips):
         pass  # Not an IP address
 
     # Run testssl on IP
-    output_file = os.path.join(output_dir if args.output else os.getcwd(), f"{ip.replace('.', '_')}.html")
+    output_file = os.path.join(output_dir, f"{ip.replace('.', '_')}.html")
 
     if os.path.isfile(output_file):
         print(f"Skipping {ip}: already scanned")
