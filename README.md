@@ -25,4 +25,4 @@ Additionally it has the -o option to select the output directory for html testss
 
 * Testssl.sh official website: https://testssl.sh/
 
-
+Thanks to Romano and Ruben for bug fixing!!
