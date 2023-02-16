@@ -19,9 +19,7 @@ testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('
 
 # Initialize output directory
 if args.output:
-    output_dir = args.output
-else:
-    output_dir = os.path.join(os.getcwd(), 'output_testssl')
+    output_dir = os.path.join(os.getcwd(), args.output)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -67,27 +65,21 @@ for i, ip in enumerate(ips):
         socket.inet_aton(ip)
     except socket.error:
         pass  # Not an IP address
+
     # Run testssl on IP
-    if args.output:
-        output_file = os.path.join(args.output, f"{ip.replace('.', '_')}.html")
-    else:
-        output_file = os.path.join(output_dir, f"{ip.replace('.', '_')}.html")
+    output_file = os.path.join(output_dir if args.output else os.getcwd(), f"{ip.replace('.', '_')}.html")
 
     if os.path.isfile(output_file):
         print(f"Skipping {ip}: already scanned")
         results[ip] = "Already scanned"
         continue
-    testssl_cmd = f"{testssl_path} -9 --html {ip}"
+    else:
+        open(output_file, 'a').close()
+
+    testssl_cmd = f"{testssl_path} -9 --append --htmlfile {output_file} {ip}"
     process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
-    output = ""
-    for line in process.stdout:
-        print(line, end='')
-        output += line
     process.wait()
-    # Write output to file
-    with open(output_file, 'w') as f:
-        f.write(output)
-    # Check for errors
+
     if process.returncode != 0:
         print(f"Error: testssl returned non-zero exit code ({process.returncode}) for {ip}")
         results[ip] = "Scan failed"
