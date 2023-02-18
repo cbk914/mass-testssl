@@ -7,6 +7,7 @@ import os
 import socket
 import validators
 import ipaddress
+import shlex
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Scan a target list for SSL/TLS security vulnerabilities using testssl.sh')
@@ -77,7 +78,9 @@ for i, ip in enumerate(ips):
         open(output_file, 'a').close()
 
     testssl_cmd = f"{testssl_path} -9 --append --htmlfile {output_file} {ip}"
-    process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+    testssl_cmd = shlex.split(testssl_cmd)
+    process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, universal_newlines=True)
+    # process = subprocess.Popen(testssl_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
     process.wait()
 
     if process.returncode != 0:
