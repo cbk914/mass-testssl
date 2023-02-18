@@ -11,7 +11,9 @@ This script is a simple wrapper around the "testssl.sh" script, which allows you
 
 * Install required Python packages: You can install the required Python packages by running 
 
-   pip install -r requirements.txt from the terminal.
+   pip install -r requirements.txt 
+
+from the terminal.
 
 * Create an input file: Create a file with a list of IP addresses, URLs, or domain names that you want to scan, with one address per line, or separated with commas all together. The addresses can be in any of the following formats: IPv4, IPv6, URL, or domain name. If you want to scan a range of IP addresses, you can use CIDR notation, e.g. 192.168.1.0/24. If you want to scan a range of IP addresses using a hyphen, e.g. 192.168.1.1-192.168.1.10, you can use a tool like fping to generate the IP list.
 
