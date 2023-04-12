@@ -23,34 +23,36 @@ output_dir = os.path.join(os.getcwd(), args.output) if args.output else os.path.
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
     
-def is_valid_ip_range(ip_range: str) -> bool:
-    if '-' not in ip_range:
-        return False
-    
-    start_ip, end_ip = ip_range.split('-')
-    
-    try:
-        start_ip = ipaddress.ip_address(start_ip.strip())
-        end_ip = ipaddress.ip_address(end_ip.strip())
-    except ValueError:
-        return False
-    
-    return start_ip.version == end_ip.version and start_ip <= end_ip    
-
 # Process input file
 ips = set()
 with open(args.file, 'r') as f:
     for line in f:
         for ip in line.strip().split(','):
             ip = ip.strip()
-            if is_valid_ip_range(ip):  # IP range detected
+            if '-' in ip:  # IP range detected
                 start_ip, end_ip = ip.split('-')
-                start_ip = ipaddress.ip_address(start_ip.strip())
-                end_ip = ipaddress.ip_address(end_ip.strip())
-                ip_range = ipaddress.summarize_address_range(start_ip, end_ip)
-                for network in ip_range:
-                    for addr in network:
+                start_octets = start_ip.split('.')
+                end_octets = end_ip.split('.')
+                if len(start_octets) != 4 or len(end_octets) != 4:
+                    print(f"Error: {ip} is not a valid IP range")
+                    continue
+                for i in range(int(start_octets[0]), int(end_octets[0])+1):
+                    for j in range(int(start_octets[1]), int(end_octets[1])+1):
+                        for k in range(int(start_octets[2]), int(end_octets[2])+1):
+                            for l in range(int(start_octets[3]), int(end_octets[3])+1):
+                                ips.add(f"{i}.{j}.{k}.{l}")
+            elif '/' in ip:  # CIDR range detected
+                try:
+                    network = ipaddress.ip_network(ip, strict=False)
+                    for addr in network.hosts():
                         ips.add(str(addr))
+                except ValueError:
+                    print(f"Error: {ip} is not a valid CIDR range")
+                    continue
+            elif validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip):
+                ips.add(ip)
+            else:
+                print(f"Error: {ip} is not a valid IP address, URL, domain name, IP range, or CIDR range")
 
 # Initialize results report
 results = {}
