@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Author: cbk914
 import subprocess
@@ -8,6 +8,29 @@ import socket
 import validators
 import ipaddress
 
+
+def is_valid_ip_range(ip_range: str) -> bool:
+    if '-' not in ip_range:
+        return False
+    
+    start_ip, end_ip = ip_range.split('-')
+    
+    try:
+        start_ip = ipaddress.ip_address(start_ip.strip())
+        end_ip = ipaddress.ip_address(end_ip.strip())
+    except ValueError:
+        return False
+    
+    return start_ip.version == end_ip.version and start_ip <= end_ip
+
+def is_url_with_port(s):
+    if ":" in s and "." in s:
+        parts = s.split(":")
+        if len(parts) == 2:
+            if validators.domain(parts[0]) and parts[1].isdigit():
+                return True
+    return False
+
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Scan a target list for SSL/TLS security vulnerabilities using testssl.sh')
 parser.add_argument('-f', '--file', required=True, help='input file with IP addresses, URLs, or domain names')
@@ -15,32 +38,39 @@ parser.add_argument('-o', '--output', help='output directory for HTML reports')
 args = parser.parse_args()
 
 # Find testssl.sh on the system
-testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('utf-8')
-default_dir = 'output_testssl'
+try:
+    testssl_path = subprocess.check_output(['which', 'testssl.sh']).strip().decode('utf-8')
+except subprocess.CalledProcessError:
+    print("Error: testssl.sh not found in PATH. Please ensure that testssl.sh is installed and available in your PATH.")
+    exit(1)
 
 # Initialize output directory
 output_dir = os.path.join(os.getcwd(), args.output) if args.output else os.path.join(os.getcwd(), default_dir)
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-    
+
 # Process input file
 ips = set()
 with open(args.file, 'r') as f:
     for line in f:
         for ip in line.strip().split(','):
             ip = ip.strip()
-            if '-' in ip:  # IP range detected
-                start_ip, end_ip = ip.split('-')
-                start_octets = start_ip.split('.')
-                end_octets = end_ip.split('.')
-                if len(start_octets) != 4 or len(end_octets) != 4:
+            if validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip) or is_url_with_port(ip):
+                ips.add(ip)
+            elif '-' in ip:  # IP range potentially detected
+                ip_split = ip.split('-')
+                if len(ip_split) == 2:
+                    try:
+                        start_ip = ipaddress.ip_address(ip_split[0].strip())
+                        end_ip = ipaddress.ip_address(ip_split[1].strip())
+                        for ip_int in range(int(start_ip), int(end_ip) + 1):
+                            ips.add(str(ipaddress.ip_address(ip_int)))
+                    except ValueError:
+                        print(f"Error: {ip} is not a valid IP range")
+                        continue
+                else:
                     print(f"Error: {ip} is not a valid IP range")
                     continue
-                for i in range(int(start_octets[0]), int(end_octets[0])+1):
-                    for j in range(int(start_octets[1]), int(end_octets[1])+1):
-                        for k in range(int(start_octets[2]), int(end_octets[2])+1):
-                            for l in range(int(start_octets[3]), int(end_octets[3])+1):
-                                ips.add(f"{i}.{j}.{k}.{l}")
             elif '/' in ip:  # CIDR range detected
                 try:
                     network = ipaddress.ip_network(ip, strict=False)
@@ -49,11 +79,9 @@ with open(args.file, 'r') as f:
                 except ValueError:
                     print(f"Error: {ip} is not a valid CIDR range")
                     continue
-            elif validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip):
-                ips.add(ip)
             else:
                 print(f"Error: {ip} is not a valid IP address, URL, domain name, IP range, or CIDR range")
-
+                
 # Initialize results report
 results = {}
 
