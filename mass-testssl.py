@@ -5,10 +5,9 @@
 import subprocess
 import argparse
 import os
-import socket
-import validators
 import ipaddress
 import logging
+from urllib.parse import urlparse
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -16,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 def is_valid_ip_range(ip_range: str) -> bool:
     if '-' not in ip_range:
         return False
-    
+
     start_ip, end_ip = ip_range.split('-')
     
     try:
@@ -27,13 +26,13 @@ def is_valid_ip_range(ip_range: str) -> bool:
     
     return start_ip.version == end_ip.version and start_ip <= end_ip
 
-def is_url_with_port(s):
-    if ":" in s and "." in s:
-        parts = s.split(":")
-        if len(parts) == 2:
-            if validators.domain(parts[0]) and parts[1].isdigit():
-                return True
-    return False
+def is_ip_with_port(s):
+    try:
+        ip, port = s.split(':')
+        ipaddress.ip_address(ip.strip())
+        return port.isdigit() and 1 <= int(port) <= 65535
+    except ValueError:
+        return False
 
 def find_testssl():
     try:
@@ -53,7 +52,9 @@ def parse_input_file(input_file):
         for line in f:
             for ip in line.strip().split(','):
                 ip = ip.strip()
-                if validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip) or is_url_with_port(ip):
+                if is_ip_with_port(ip):
+                    ips.add(ip)
+                elif validators.ipv4(ip) or validators.ipv6(ip) or validators.domain(ip) or validators.url(ip):
                     ips.add(ip)
                 elif '-' in ip:  # IP range potentially detected
                     if is_valid_ip_range(ip):
@@ -76,7 +77,9 @@ def parse_input_file(input_file):
     return ips
 
 def scan_with_testssl(ip, testssl_path, output_dir):
-    output_file = os.path.join(output_dir, f"{ip.replace('.', '_')}.html")
+    # Adjust the output filename to handle "IP:port"
+    safe_ip = ip.replace('.', '_').replace(':', '_')
+    output_file = os.path.join(output_dir, f"{safe_ip}.html")
 
     if os.path.isfile(output_file):
         logging.info(f"Skipping {ip}: already scanned")
