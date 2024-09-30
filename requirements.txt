@@ -1,2 +1,4 @@
 argparse==1.4.0
 validators==0.20.0
+beautifulsoup4 
+lxml
