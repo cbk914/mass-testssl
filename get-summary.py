@@ -6,7 +6,7 @@ import argparse
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-def analyze_testssl_html(input_path, output_file):
+def analyze_testssl_html(input_path, output_dir):
     summary = {}
 
     # Check if input_path is a directory or a file
@@ -45,14 +45,22 @@ def analyze_testssl_html(input_path, output_file):
         if vulnerabilities_section:
             # Find all vulnerabilities in the section
             for vuln in vulnerabilities_section.find_all_next('span'):
-                if 'not vulnerable' in vuln.text or 'OK' in vuln.text:
-                    continue  # Skip false positives
-                elif 'VULNERABLE' in vuln.text or 'offered' in vuln.text:
-                    vulnerabilities.append(vuln.text.strip())
+                # Skip entries that explicitly state "OK", "not vulnerable", or indicate no risk
+                if any(keyword in vuln.text.lower() for keyword in ['ok', 'not vulnerable', 'no risk']):
+                    continue
+                vulnerabilities.append(vuln.text.strip())
         
         # If there are any vulnerabilities, add them to the summary
         if vulnerabilities:
             summary[host_name] = vulnerabilities
+
+    # Create output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Construct the output filename
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    output_file = os.path.join(output_dir, f"summary-{project_name}-{current_date}.html")
 
     # Write the summary to an output HTML file
     with open(output_file, 'w') as output:
@@ -70,25 +78,10 @@ def analyze_testssl_html(input_path, output_file):
 def main():
     parser = argparse.ArgumentParser(description='Analyze testssl HTML output files and generate a summary.')
     parser.add_argument('-i', '--input', required=True, help='Input file or directory containing testssl HTML files.')
+    parser.add_argument('-o', '--output', required=True, help='Output directory for the summary and result files.')
     args = parser.parse_args()
 
-    # Get the current date
-    current_date = datetime.now().strftime('%Y-%m-%d')
-
-    # Determine project name from input path
-    if os.path.isdir(args.input):
-        project_name = os.path.basename(os.path.normpath(args.input))
-    elif os.path.isfile(args.input):
-        project_name = os.path.splitext(os.path.basename(args.input))[0]
-    else:
-        print(f"Error: {args.input} is not a valid file or directory.")
-        return
-
-    # Construct the output filename
-    output_file = f"summary-{project_name}-{current_date}.html"
-
-    # Run analysis
-    analyze_testssl_html(args.input, output_file)
+    analyze_testssl_html(args.input, args.output)
 
 if __name__ == "__main__":
     main()
