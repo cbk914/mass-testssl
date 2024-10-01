@@ -6,6 +6,7 @@ import os
 import argparse
 from bs4 import BeautifulSoup
 from datetime import datetime
+import re
 
 def analyze_testssl_html(input_path, output_dir):
     vulnerabilities_summary = {}
@@ -21,6 +22,11 @@ def analyze_testssl_html(input_path, output_dir):
         print(f"Error: {input_path} is not a valid file or directory.")
         return
 
+    # Define patterns to identify vulnerability and host information
+    host_pattern = re.compile(r'Start.*-->>(.*?)<<--')
+    vulnerability_keywords = ['vulnerable', 'risk', 'exposure', 'insecure']
+    false_positive_keywords = ['ok', 'not vulnerable', 'no risk', 'secure']
+
     # Loop through all files
     for file_path in files:
         # Skip files that are 4KB or less as they are considered failed scans
@@ -30,15 +36,18 @@ def analyze_testssl_html(input_path, output_dir):
         # Open and parse the HTML file
         with open(file_path, 'r', encoding='utf-8') as file:
             soup = BeautifulSoup(file, 'lxml')
-        
-        # Find the host information in the file
-        host_name_tag = soup.find('span', text=lambda x: x and 'Start' in x)
+
+        # Find the host information
+        host_name = None
+        host_name_tag = soup.find('span', text=host_pattern)
         if host_name_tag:
-            host_name = host_name_tag.text.split('-->>')[1].split('<<--')[0].strip()
-        else:
+            match = host_pattern.search(host_name_tag.text)
+            if match:
+                host_name = match.group(1).strip()
+        if not host_name:
             continue
-        
-        # Gather vulnerabilities
+
+        # Find the vulnerabilities section
         vulnerabilities_section = soup.find('span', text=lambda x: x and 'Testing vulnerabilities' in x)
         if not vulnerabilities_section:
             continue
@@ -47,19 +56,18 @@ def analyze_testssl_html(input_path, output_dir):
         for vuln in vulnerabilities_section.find_all_next('span'):
             vuln_text = vuln.text.strip()
             vuln_lower = vuln_text.lower()
-            
+
             # Skip false positives or benign findings
-            if any(keyword in vuln_lower for keyword in ['ok', 'not vulnerable', 'no risk', 'secure']):
+            if any(keyword in vuln_lower for keyword in false_positive_keywords):
                 continue
 
-            # Extract vulnerability name
-            vuln_name = None
-            if ':' in vuln_text:
-                vuln_name = vuln_text.split(':')[0].strip()
-            elif ' ' in vuln_text:
-                vuln_name = vuln_text.split(' ')[0].strip()
-            else:
-                vuln_name = vuln_text  # Fallback to the entire text if no clear separator
+            # Check if the text contains any key vulnerability indicators
+            if not any(keyword in vuln_lower for keyword in vulnerability_keywords):
+                continue
+
+            # Extract vulnerability name using regex
+            vuln_name_match = re.search(r'^([\w\s-]+?):', vuln_text) or re.search(r'^([\w\s-]+?) ', vuln_text)
+            vuln_name = vuln_name_match.group(1).strip() if vuln_name_match else vuln_text
 
             # Capture additional metadata (e.g., "experimental")
             is_experimental = 'experimental' in vuln_lower
