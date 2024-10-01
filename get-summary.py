@@ -32,9 +32,9 @@ def analyze_testssl_html(input_path, output_dir):
             soup = BeautifulSoup(file, 'lxml')
         
         # Find the host information in the file
-        host_name = soup.find('span', text=lambda x: x and 'Start' in x)
-        if host_name:
-            host_name = host_name.text.split('-->>')[1].split('<<--')[0].strip()
+        host_name_tag = soup.find('span', text=lambda x: x and 'Start' in x)
+        if host_name_tag:
+            host_name = host_name_tag.text.split('-->>')[1].split('<<--')[0].strip()
         else:
             continue
         
@@ -45,19 +45,32 @@ def analyze_testssl_html(input_path, output_dir):
 
         # Parse vulnerabilities and weak ciphers
         for vuln in vulnerabilities_section.find_all_next('span'):
-            vuln_text = vuln.text.strip().lower()
-            if any(keyword in vuln_text for keyword in ['ok', 'not vulnerable', 'no risk']):
-                continue  # Skip false positives
+            vuln_text = vuln.text.strip()
+            vuln_lower = vuln_text.lower()
             
-            # Categorize vulnerability
-            if 'vulnerable' in vuln_text or 'offered' in vuln_text:
-                vuln_name = vuln_text.split(':')[0] if ':' in vuln_text else vuln_text
+            # Skip false positives or benign findings
+            if any(keyword in vuln_lower for keyword in ['ok', 'not vulnerable', 'no risk', 'secure']):
+                continue
 
-                # Store the vulnerability and affected host
-                if vuln_name not in vulnerabilities_summary:
-                    vulnerabilities_summary[vuln_name] = {'hosts': [], 'details': []}
-                vulnerabilities_summary[vuln_name]['hosts'].append(host_name)
-                vulnerabilities_summary[vuln_name]['details'].append(vuln_text)
+            # Extract vulnerability name
+            vuln_name = None
+            if ':' in vuln_text:
+                vuln_name = vuln_text.split(':')[0].strip()
+            elif ' ' in vuln_text:
+                vuln_name = vuln_text.split(' ')[0].strip()
+            else:
+                vuln_name = vuln_text  # Fallback to the entire text if no clear separator
+
+            # Capture additional metadata (e.g., "experimental")
+            is_experimental = 'experimental' in vuln_lower
+            if is_experimental:
+                vuln_text = f"[Experimental] {vuln_text}"
+
+            # Store the vulnerability and affected host
+            if vuln_name not in vulnerabilities_summary:
+                vulnerabilities_summary[vuln_name] = {'hosts': set(), 'details': set()}
+            vulnerabilities_summary[vuln_name]['hosts'].add(host_name)
+            vulnerabilities_summary[vuln_name]['details'].add(vuln_text)
 
     # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -75,12 +88,12 @@ def analyze_testssl_html(input_path, output_dir):
         for vuln_name, data in vulnerabilities_summary.items():
             output.write(f'<h2>Vulnerability: {vuln_name}</h2>\n')
             output.write('<h3>Affected Hosts:</h3>\n<ul>\n')
-            for host in set(data['hosts']):
+            for host in data['hosts']:
                 output.write(f'  <li>{host}</li>\n')
             output.write('</ul>\n')
 
             output.write('<h3>Details:</h3>\n<ul>\n')
-            for detail in set(data['details']):
+            for detail in data['details']:
                 output.write(f'  <li>{detail}</li>\n')
             output.write('</ul>\n')
 
