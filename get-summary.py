@@ -23,8 +23,8 @@ def analyze_testssl_html(input_path, output_dir):
 
     # Loop through all files
     for file_path in files:
-        # Skip files that are 2KB or less as they are considered failed scans
-        if os.path.getsize(file_path) <= 2048:
+        # Skip files that are 4KB or less as they are considered failed scans
+        if os.path.getsize(file_path) <= 4096:
             continue
 
         # Open and parse the HTML file
